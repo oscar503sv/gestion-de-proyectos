@@ -10,32 +10,36 @@ export async function GET(request, { params }) {
     // Validar que el ID sea un número válido
     const userId = parseInt(id);
     if (isNaN(userId)) {
-      return NextResponse.json(
-        { error: "ID de usuario inválido" },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: "ID de usuario inválido"
+      }, { status: 400 });
     }
     
     // Buscar el usuario
     const user = data.users.find((user) => user.id === userId);
     
     if (!user) {
-      return NextResponse.json(
-        { error: "Usuario no encontrado" },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: "Usuario no encontrado"
+      }, { status: 404 });
     }
     
     // Remover password por seguridad
     const { password, ...userWithoutPassword } = user;
-    return NextResponse.json(userWithoutPassword);
+    return NextResponse.json({
+      success: true,
+      data: userWithoutPassword,
+      message: "Usuario obtenido exitosamente"
+    }, { status: 200 });
     
   } catch (error) {
     console.error('Error al obtener usuario:', error);
-    return NextResponse.json(
-      { error: "Error interno del servidor" },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      message: "Error interno del servidor"
+    }, { status: 500 });
   }
 }
 
@@ -44,100 +48,145 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const { name, email, password } = await request.json();
-    const userIndex = data.users.findIndex((user) => user.id === parseInt(id));
+    
+    // Validar ID
+    const userId = parseInt(id);
+    if (isNaN(userId)) {
+      return NextResponse.json({
+        success: false,
+        message: "ID de usuario inválido"
+      }, { status: 400 });
+    }
+    
+    const userIndex = data.users.findIndex((user) => user.id === userId);
 
     if (userIndex === -1) {
-      return NextResponse.json(
-        { error: "Usuario no encontrado" },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: "Usuario no encontrado"
+      }, { status: 404 });
     }
 
-    if (!name || !email || !password) {
-      return NextResponse.json(
-        { error: "Faltan campos obligatorios" },
-        { status: 400 }
-      );
+    // Array para acumular errores de validación
+    const errors = [];
+    
+    // Validar campos requeridos
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      errors.push("El nombre es requerido");
+    }
+    if (!email || typeof email !== 'string' || email.trim().length === 0) {
+      errors.push("El email es requerido");
+    }
+    if (!password || typeof password !== 'string' || password.trim().length === 0) {
+      errors.push("La contraseña es requerida");
     }
 
-    const cleanName = validator.trim(name || "");
+    // Si faltan campos básicos, retornar errores
+    if (errors.length > 0) {
+      return NextResponse.json({
+        success: false,
+        message: "Errores de validación",
+        errors: errors
+      }, { status: 400 });
+    }
+
+    const cleanName = validator.trim(name);
 
     if (!validator.isLength(cleanName, { min: 2, max: 50 })) {
-      return NextResponse.json(
-        { error: "El nombre completo debe tener entre 2 y 50 caracteres" },
-        { status: 400 }
-      );
+      errors.push("El nombre completo debe tener entre 2 y 50 caracteres");
     }
 
     // letras, espacios, tildes, guiones y apóstrofos son aceptados
     const namePattern = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$/;
     if (!namePattern.test(cleanName)) {
-      return NextResponse.json(
-        {
-          error:
-            "El nombre solo puede contener letras, espacios, guiones y apóstrofos",
-        },
-        { status: 400 }
-      );
+      errors.push("El nombre solo puede contener letras, espacios, guiones y apóstrofos");
     }
 
     if (!validator.isEmail(email)) {
-      return NextResponse.json(
-        { error: "Correo electrónico no válido" },
-        { status: 400 }
-      );
+      errors.push("El formato del email es inválido");
     }
+    
+    // Normalizar email
+    const cleanEmail = validator.normalizeEmail(email);
+    
     // Verificar si el email ya está en uso por otro usuario
     const emailInUse = data.users.some(
-      (user, index) => user.email === validator.normalizeEmail(email) && index !== userIndex
+      (user, index) => user.email.toLowerCase() === cleanEmail.toLowerCase() && index !== userIndex
     );
 
     if (emailInUse) {
-      return NextResponse.json(
-        { error: "El correo electrónico ya está en uso" },
-        { status: 400 }
-      );
+      errors.push("El email ya está registrado por otro usuario");
+    }
+
+    // Validar longitud de contraseña
+    if (password.length < 6) {
+      errors.push("La contraseña debe tener al menos 6 caracteres");
+    }
+
+    // Si hay errores de validación, retornarlos
+    if (errors.length > 0) {
+      return NextResponse.json({
+        success: false,
+        message: "Errores de validación",
+        errors: errors
+      }, { status: 400 });
     }
 
     // actualizar usuario
     data.users[userIndex] = {
       ...data.users[userIndex],
       name: cleanName,
-      email: validator.normalizeEmail(email),
+      email: cleanEmail,
       password,
     };
+    
     const { password: pwd, ...updatedUser } = data.users[userIndex];
-    return NextResponse.json(updatedUser);
+    return NextResponse.json({
+      success: true,
+      data: updatedUser,
+      message: "Usuario actualizado exitosamente"
+    }, { status: 200 });
+    
   } catch (error) {
-    return NextResponse.json(
-      { error: "Error al actualizar el usuario" },
-      { status: 500 }
-    );
+    console.error("Error al actualizar usuario:", error);
+    
+    // Manejar errores en estructura JSON
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({
+        success: false,
+        message: "Formato JSON inválido"
+      }, { status: 400 });
+    }
+    
+    return NextResponse.json({
+      success: false,
+      message: "Error interno del servidor"
+    }, { status: 500 });
   }
 }
 
 // Eliminar un usuario por ID
 export async function DELETE(request, { params }) {
   try {
-    const { id } = await params; // Con await
+    const { id } = await params;
     
     // Validar ID
     const userId = parseInt(id);
     if (isNaN(userId)) {
-      return NextResponse.json(
-        { error: "ID de usuario inválido" },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: "ID de usuario inválido"
+      }, { status: 400 });
     }
     
     // Buscar índice del usuario
     const userIndex = data.users.findIndex((user) => user.id === userId);
     
     if (userIndex === -1) {
-      return NextResponse.json(
-        { error: "Usuario no encontrado" },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: "Usuario no encontrado"
+      }, { status: 404 });
     }
     
     // Verificar si el usuario tiene dependencias antes de eliminar
@@ -145,17 +194,18 @@ export async function DELETE(request, { params }) {
     const hasTasks = data.tasks.some(task => task.assignedTo === userId);
     
     if (hasProjects || hasTasks) {
-      return NextResponse.json(
-        { 
-          error: "No se puede eliminar el usuario",
-          reason: "El usuario tiene proyectos creados o tareas asignadas",
-          details: {
-            projectsCount: data.projects.filter(p => p.createdBy === userId).length,
-            tasksCount: data.tasks.filter(t => t.assignedTo === userId).length
-          }
-        },
-        { status: 409 }
-      );
+      const projectsCount = data.projects.filter(p => p.createdBy === userId).length;
+      const tasksCount = data.tasks.filter(t => t.assignedTo === userId).length;
+      
+      return NextResponse.json({
+        success: false,
+        message: "No se puede eliminar el usuario porque tiene dependencias",
+        errors: [
+          "El usuario tiene proyectos creados o tareas asignadas",
+          `Proyectos creados: ${projectsCount}`,
+          `Tareas asignadas: ${tasksCount}`
+        ]
+      }, { status: 409 });
     }
     
     // Guardar datos del usuario eliminado
@@ -164,20 +214,21 @@ export async function DELETE(request, { params }) {
     // Eliminar usuario
     data.users.splice(userIndex, 1);
     
-    return NextResponse.json({ 
-      message: "Usuario eliminado exitosamente",
-      deletedUser: {
+    return NextResponse.json({
+      success: true,
+      data: {
         id: deletedUser.id,
         name: deletedUser.name,
         email: deletedUser.email
-      }
-    });
+      },
+      message: "Usuario eliminado exitosamente"
+    }, { status: 200 });
     
   } catch (error) {
     console.error('Error al eliminar usuario:', error);
-    return NextResponse.json(
-      { error: "Error interno del servidor" },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      message: "Error interno del servidor"
+    }, { status: 500 });
   }
 }
