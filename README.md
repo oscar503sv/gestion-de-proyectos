@@ -46,7 +46,7 @@ La aplicación incluye una API REST completa para la gestión de usuarios, proye
 }
 ```
 
-### Autenticación
+### 🔐 Autenticación
 
 #### POST `/api/auth/login`
 Autenticación de usuarios para acceso al sistema.
@@ -58,6 +58,10 @@ Autenticación de usuarios para acceso al sistema.
   "password": "contraseña"
 }
 ```
+
+**Validaciones:**
+- `email`: Debe ser un formato de email válido
+- `password`: Es requerido (no vacío)
 
 **Respuesta exitosa:**
 ```json
@@ -76,10 +80,26 @@ Autenticación de usuarios para acceso al sistema.
 }
 ```
 
+**🧪 Credenciales de prueba:**
+```json
+// Gerente
+{
+  "email": "juan@proyecto.com",
+  "password": "password123"
+}
+
+// Usuario regular  
+{
+  "email": "maria@proyecto.com", 
+  "password": "password123"
+}
+
+```
+
 ### 👥 Usuarios
 
 #### GET `/api/users`
-Obtiene todos los usuarios (sin contraseñas).
+Obtiene todos los usuarios del sistema (sin contraseñas).
 
 #### POST `/api/users`
 Crea un nuevo usuario.
@@ -112,26 +132,41 @@ Actualiza un usuario existente.
 #### DELETE `/api/users/[id]`
 Elimina un usuario (no se puede eliminar si tiene proyectos o tareas asignadas).
 
-### Proyectos
+### 📁 Proyectos
 
 #### GET `/api/projects?requestedBy=USER_ID`
-Obtiene proyectos según el rol del usuario:
-- **Gerentes**: Todos los proyectos
-- **Usuarios**: Solo proyectos donde tienen tareas asignadas
+Obtiene proyectos según el rol del usuario que hace la petición.
+
+**Parámetro obligatorio:**
+- `requestedBy`: ID del usuario que realiza la petición
+
+**Lógica de permisos:**
+- **Gerentes**: Pueden ver TODOS los proyectos del sistema
+- **Usuarios**: Solo pueden ver proyectos donde tienen tareas asignadas
+
+**Respuesta:** Proyectos con información del usuario creador incluida.
 
 #### POST `/api/projects`
-Crea un nuevo proyecto (solo gerentes).
+Crea un nuevo proyecto.
+
+**🔒 Restricción:** Solo usuarios con rol 'gerente' pueden crear proyectos.
 
 **Body:**
 ```json
 {
   "name": "Nombre del Proyecto",
-  "description": "Descripción detallada del proyecto",
+  "description": "Descripción detallada del proyecto",  
   "deadline": "2025-12-31",
-  "status": "pendiente", // opcional: "pendiente", "en progreso", "completado", "cancelado"
-  "createdBy": 1 // ID del gerente
+  "status": "pendiente",
+  "createdBy": 1 // ID del gerente que crea el proyecto
 }
 ```
+
+**Validaciones:**
+- `name`: 3-100 caracteres, debe ser único
+- `description`: 10-500 caracteres
+- `deadline`: No puede ser anterior a hoy
+- `createdBy`: Debe ser un usuario existente con rol 'gerente'
 
 #### GET `/api/projects/[id]`
 Obtiene un proyecto específico por ID.
@@ -162,15 +197,24 @@ Elimina un proyecto (solo gerentes). Se puede eliminar si:
 }
 ```
 
-### Tareas
+### 📋 Tareas
 
 #### GET `/api/tasks?requestedBy=USER_ID`
-Obtiene tareas según el rol del usuario:
-- **Gerentes**: Todas las tareas
-- **Usuarios**: Solo tareas asignadas a ellos
+Obtiene tareas según el rol del usuario que hace la petición.
+
+**Parámetro obligatorio:**
+- `requestedBy`: ID del usuario que realiza la petición
+
+**Lógica de permisos:**
+- **Gerentes**: Pueden ver TODAS las tareas del sistema
+- **Usuarios**: Solo pueden ver tareas asignadas a ellos
+
+**Respuesta:** Tareas con información del usuario asignado y proyecto incluida.
 
 #### POST `/api/tasks`
-Crea una nueva tarea (solo gerentes).
+Crea una nueva tarea.
+
+**🔒 Restricción:** Solo usuarios con rol 'gerente' pueden crear tareas.
 
 **Body:**
 ```json
@@ -182,9 +226,17 @@ Crea una nueva tarea (solo gerentes).
   "priority": "alta", // "baja", "media", "alta"
   "status": "pendiente", // opcional: "pendiente", "en progreso", "completado"
   "dueDate": "2025-10-15T17:00:00Z",
-  "requestedBy": 1 // ID del gerente
+  "requestedBy": 1 // ID del gerente que crea la tarea
 }
 ```
+
+**Validaciones:**
+- `title`: 3-100 caracteres
+- `description`: 10-500 caracteres
+- `projectId`: Debe ser un proyecto existente
+- `assignedTo`: Debe ser un usuario existente
+- `dueDate`: No puede ser anterior a hoy
+- `requestedBy`: Debe ser un gerente existente
 
 #### GET `/api/tasks/[id]?requestedBy=USER_ID`
 Obtiene una tarea específica por ID (usuarios solo pueden ver sus tareas asignadas).
@@ -385,18 +437,21 @@ Obtiene las tareas de un proyecto específico con filtros opcionales.
 }
 ```
 
-### Control de Acceso por Roles
+### 🔐 Control de Acceso por Roles
 
-#### Gerente:
-- ✅ Crear, ver, actualizar y eliminar proyectos
-- ✅ Crear, ver, actualizar y eliminar tareas
-- ✅ Ver todos los usuarios, proyectos y tareas del sistema
+#### 👑 Gerente:
+- ✅ **Proyectos:** Crear, ver todos, actualizar y eliminar
+- ✅ **Tareas:** Crear, ver todas, actualizar cualquier campo, eliminar
+- ✅ **Dashboard:** Ver estadísticas globales del sistema
 
-#### Usuario:
-- ✅ Ver solo proyectos donde tiene tareas asignadas
-- ✅ Ver solo tareas asignadas a él
-- ✅ Actualizar solo el estado de sus tareas asignadas
-- ❌ No puede gestionar proyectos ni crear/eliminar tareas
+#### 👤 Usuario:
+- 🔒 **Proyectos:** Solo ver proyectos donde tiene tareas asignadas
+- 🔒 **Tareas:** Solo ver tareas asignadas a él, actualizar solo el `status` de sus tareas
+- 🔒 **Dashboard:** Ver solo sus estadísticas personales
+- ❌ **Restricciones:** No puede crear/eliminar proyectos ni tareas
+
+#### ⚠️ Parámetro `requestedBy`
+**TODOS los endpoints de proyectos y tareas requieren el parámetro `requestedBy`** para aplicar el control de acceso según el rol del usuario.
 
 ### Códigos de Estado HTTP
 
@@ -409,8 +464,22 @@ Obtiene las tareas de un proyecto específico con filtros opcionales.
 - `409` - Conflicto (ej: email duplicado, proyecto con tareas asociadas)
 - `500` - Error interno del servidor
 
+## ⚠️ Notas
+
+### Sobre los Datos
+- **Datos simulados:** La aplicación usa datos almacenados en memoria (`/src/app/lib/data.js`)
+- **Persistencia:** Los datos NO se persisten entre reinicios del servidor
+
+### Sobre la Autenticación
+- **sessionToken:** Se genera de forma simple y se almacena en localStorage
+
+### Sobre los Permisos
+- **requestedBy:** Parámetro para el control de acceso en proyectos y tareas
+- **Validación:** El sistema valida que el usuario existe y aplica permisos según su rol
+
 ## 🛠️ Tecnologías Utilizadas
 
 - **[Next.js](https://nextjs.org/)** - Framework de React para aplicaciones web
 - **[React](https://reactjs.org/)** - Biblioteca para interfaces de usuario
 - **[Tailwind](https://tailwindcss.com/)** - Framework de CSS utilitario
+- **[validator.js](https://github.com/validatorjs/validator.js)** - Validación de datos del lado servidor

@@ -2,13 +2,26 @@ import { NextResponse } from "next/server";
 import data from "@/app/lib/data.js";
 import validator from "validator";
 
-// Función para obtener todos los proyectos
+/**
+ * ENDPOINT GET /api/projects - Obtener proyectos según rol del usuario
+ * 
+ * LÓGICA DE PERMISOS:
+ * - GERENTE: Ve todos los proyectos del sistema
+ * - USUARIO: Solo ve proyectos donde tiene tareas asignadas
+ * 
+ * PARÁMETROS REQUERIDOS:
+ * - requestedBy: ID del usuario que hace la petición
+ * 
+ * RESPUESTA:
+ * - Proyectos con información del creador incluida
+ * - Filtrados según el rol del usuario solicitante
+ */
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const requestedBy = parseInt(searchParams.get('requestedBy'));
     
-    // Validar que se proporcione el usuario que hace la petición
+    // VALIDACIÓN: Usuario que hace la petición es requerido
     if (!requestedBy || isNaN(requestedBy)) {
       return NextResponse.json({
         success: false,
@@ -16,7 +29,7 @@ export async function GET(request) {
       }, { status: 400 });
     }
     
-    // Verificar que el usuario exista
+    // VALIDACIÓN: Verificar que el usuario existe
     const requestingUser = data.users.find(user => user.id === requestedBy);
     if (!requestingUser) {
       return NextResponse.json({
@@ -27,41 +40,58 @@ export async function GET(request) {
     
     let projectsToReturn;
     
-    // Si es gerente, puede ver todos los proyectos
+    /**
+     * FILTRADO POR ROL - Esta es la lógica principal de permisos
+     */
     if (requestingUser.role === 'gerente') {
+      // ✅ GERENTE: Acceso total - puede ver todos los proyectos
       projectsToReturn = data.projects;
     } 
-    // Si es usuario, solo puede ver proyectos donde tiene tareas asignadas
     else if (requestingUser.role === 'usuario') {
+      // USUARIO: Acceso limitado - solo proyectos donde tiene tareas
+      
+      // 1. Encontrar todos los proyectos donde el usuario tiene tareas asignadas
       const userTaskProjectIds = data.tasks
         .filter(task => task.assignedTo === requestedBy)
         .map(task => task.projectId);
       
+      // 2. Eliminar IDs duplicados (un usuario puede tener múltiples tareas en el mismo proyecto)
       const uniqueProjectIds = [...new Set(userTaskProjectIds)];
+      
+      // 3. Filtrar proyectos: solo aquellos donde el usuario tiene participación
       projectsToReturn = data.projects.filter(project => 
         uniqueProjectIds.includes(project.id)
       );
     }
     else {
+      // ROL INVÁLIDO
       return NextResponse.json({
         success: false,
         message: "Rol de usuario no válido"
       }, { status: 403 });
     }
     
-    // Retornar proyectos con información del creador
+    /**
+     * ENRIQUECIMIENTO DE DATOS
+     * Agregar información del usuario creador a cada proyecto
+     * Esto mejora la UX mostrando quién creó cada proyecto
+     */
     const projectsWithCreator = projectsToReturn.map(project => {
       const creator = data.users.find(user => user.id === project.createdBy);
       return {
         ...project,
-        createdByUser: creator ? { id: creator.id, name: creator.name, email: creator.email } : null
+        createdByUser: creator ? { 
+          id: creator.id, 
+          name: creator.name, 
+          email: creator.email 
+        } : null
       };
     });
 
     return NextResponse.json({
       success: true,
       data: projectsWithCreator,
-      message: "Proyectos obtenidos exitosamente"
+      message: `Proyectos obtenidos exitosamente (${projectsWithCreator.length} proyecto${projectsWithCreator.length !== 1 ? 's' : ''})`
     }, { status: 200 });
 
   } catch (error) {
@@ -73,12 +103,27 @@ export async function GET(request) {
   }
 }
 
-// Función para crear un nuevo proyecto
+/**
+ * ENDPOINT POST /api/projects - Crear un nuevo proyecto
+ * 
+ * RESTRICCIONES:
+ * - Solo usuarios con rol 'gerente' pueden crear proyectos
+ * - El nombre del proyecto debe ser único
+ * 
+ * CAMPOS REQUERIDOS:
+ * - name: Nombre del proyecto (3-100 caracteres)
+ * - description: Descripción (10-500 caracteres)
+ * - deadline: Fecha límite (formato ISO8601, no anterior a hoy)
+ * - createdBy: ID del usuario gerente que crea el proyecto
+ * 
+ * CAMPOS OPCIONALES:
+ * - status: Estado del proyecto (por defecto: "pendiente")
+ */
 export async function POST(request) {
   try {
     const body = await request.json();
     
-    // Validaciones básicas
+    // Array para acumular errores de validación
     const errors = [];
     
     // Validar nombre del proyecto
