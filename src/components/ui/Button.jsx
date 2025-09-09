@@ -13,7 +13,8 @@ export default function Button({
   const variants = {
     primary: 'bg-steel-blue hover:bg-outer-space text-white',
     secondary: 'bg-ice-blue hover:bg-mint-green text-gunmetal',
-    outline: 'border-2 border-steel-blue text-steel-blue hover:bg-outer-space hover:text-white'
+    outline: 'border-2 border-steel-blue text-steel-blue hover:bg-outer-space hover:text-white',
+    link: 'text-steel-blue hover:underline'
   };
 
   // Tamaños
