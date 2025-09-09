@@ -13,7 +13,7 @@ export default function Navbar() {
           </div>
           
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm">
+            <Button variant="outline" size="sm">
               <Link href="/login">Iniciar Sesión</Link>
             </Button>
             <Button size="sm">

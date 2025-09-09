@@ -21,7 +21,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const requestedBy = parseInt(searchParams.get('requestedBy'));
     
-    // VALIDACIÓN: Usuario que hace la petición es requerido
+    // El usuario que hace la petición es requerido
     if (!requestedBy || isNaN(requestedBy)) {
       return NextResponse.json({
         success: false,
@@ -29,7 +29,7 @@ export async function GET(request) {
       }, { status: 400 });
     }
     
-    // VALIDACIÓN: Verificar que el usuario existe
+    // Verificar que el usuario existe
     const requestingUser = data.users.find(user => user.id === requestedBy);
     if (!requestingUser) {
       return NextResponse.json({
@@ -41,7 +41,7 @@ export async function GET(request) {
     let projectsToReturn;
     
     /**
-     * FILTRADO POR ROL - Esta es la lógica principal de permisos
+     * FILTRADO POR ROL - Lógica principal de permisos
      */
     if (requestingUser.role === 'gerente') {
       // ✅ GERENTE: Acceso total - puede ver todos los proyectos
@@ -74,7 +74,6 @@ export async function GET(request) {
     /**
      * ENRIQUECIMIENTO DE DATOS
      * Agregar información del usuario creador a cada proyecto
-     * Esto mejora la UX mostrando quién creó cada proyecto
      */
     const projectsWithCreator = projectsToReturn.map(project => {
       const creator = data.users.find(user => user.id === project.createdBy);
@@ -113,7 +112,7 @@ export async function GET(request) {
  * CAMPOS REQUERIDOS:
  * - name: Nombre del proyecto (3-100 caracteres)
  * - description: Descripción (10-500 caracteres)
- * - deadline: Fecha límite (formato ISO8601, no anterior a hoy)
+ * - deadline: Fecha límite no anterior a hoy
  * - createdBy: ID del usuario gerente que crea el proyecto
  * 
  * CAMPOS OPCIONALES:
