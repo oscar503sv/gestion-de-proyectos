@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
+import SearchBar from '@/components/buscador';
 
 /**
  * DASHBOARD PRINCIPAL - Página protegida que muestra estadísticas del usuario
@@ -132,6 +133,14 @@ export default function DashboardPage() {
               Bienvenido, {user?.name} ({user?.role})
             </p>
           </div>
+
+          {/* funcionalidad del placeholder buscador dentro del dashboard */}
+
+          <div className="flex-1 flex justify-center px-8">
+            <SearchBar />
+          </div>
+
+
           {/* Botón para cerrar sesión */}
           <Button 
             variant="secondary" 
