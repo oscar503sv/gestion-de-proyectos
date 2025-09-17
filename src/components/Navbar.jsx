@@ -11,6 +11,7 @@ export default function Navbar() {
               Gestión de Proyectos
             </Link>
           </div>
+
           
           <div className="flex items-center space-x-4">
             <Button variant="outline" size="sm">
