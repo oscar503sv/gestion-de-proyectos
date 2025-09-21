@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import SearchBar from '@/components/buscador';
+import Task from '@/components/Task';
+import TaskForm from '@/components/RegistrarTask';
 
 /**
  * DASHBOARD PRINCIPAL - Página protegida que muestra estadísticas del usuario
@@ -20,13 +22,29 @@ import SearchBar from '@/components/buscador';
  * 
  * ENDPOINT USADO: /api/dashboard?requestedBy={userId}
  */
+
+
+
+
 export default function DashboardPage() {
+
+
+  const [tasks, setTasks] = useState([
+    { id: 1, titulo: "Sistema De Inventario", descripcion: "Agregar lista de tareas", prioridad: "Alta", estatus: "Pendiente", encargado: "", proyectoId: "am" },
+    { id: 2, titulo: "Desarrollo de sitio web", descripcion: "Agregar lista de tareas", prioridad: "Intermedia", estatus: "Pendiente", encargado: "", proyectoId: "dsw" },
+    { id: 3, titulo: "App movil", descripcion: "Agregar lista de tareas", prioridad: "Baja", estatus: "Pendiente", encargado: "", proyectoId: "sdi" },
+  ]);
+
   const router = useRouter(); // Para navegación programática (redirecciones)
-  
+
   // Estados principales del componente
   const [user, setUser] = useState(null);        // Datos del usuario logueado
   const [stats, setStats] = useState(null);      // Estadísticas del dashboard desde la API
-  const [isLoading, setIsLoading] = useState(true); // Control de loading
+  const [isLoading, setIsLoading] = useState(true);
+  const [taskVisible, setTaskVisble] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [taskToDelete, setTaskToDelete] = useState(null);
 
   /**
    * EFECTO PRINCIPAL - Se ejecuta al montar el componente
@@ -71,6 +89,8 @@ export default function DashboardPage() {
    * - myProjects: proyectos donde tiene tareas asignadas
    * - upcomingDeadlines: sus próximos vencimientos personales
    */
+
+
   const loadDashboardStats = async (token, userId) => {
     try {
       // El endpoint necesita saber qué usuario está pidiendo los datos
@@ -81,7 +101,7 @@ export default function DashboardPage() {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         setStats(data.data); // Guardar las estadísticas en el estado
       } else {
@@ -108,9 +128,68 @@ export default function DashboardPage() {
     // Limpiar localStorage
     localStorage.removeItem('sessionToken');
     localStorage.removeItem('user');
-    
+
     // Redirigir al home
     router.push('/');
+  };
+
+
+  const handleEditTask = (updatedTask) => {
+    console.log("Editar tarea:", updatedTask);
+    setTasks((prev) =>
+      prev.map((task) => (task.id === updatedTask.id ? updatedTask : task))
+    );
+  };
+
+
+  const handleCompleteTask = (id) => {
+    console.log("Finalizar tarea ID:", id);
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === id ? {
+          ...task, estatus: "Completada", fechaFinalizacion: new Date().toLocaleString("es-ES", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+        } : task
+      )
+    );
+  };
+
+
+
+  function llamarTask() {
+    setTaskVisble((value) => !value)
+  }
+
+  function registrarTask(newTask) {
+    setShowForm(true)
+
+  }
+
+
+  const handleAddTask = (newTask) => {
+    setTasks((prev) => [...prev, { id: Date.now(), ...newTask }]);
+  };
+
+
+
+
+  const handleDeleteTask = (id) => {
+    setTaskToDelete(id); // guardamos cuál se quiere borrar
+  };
+
+  const confirmDelete = () => {
+    setTasks((prev) => prev.filter((task) => task.id !== taskToDelete));
+    setTaskToDelete(null); // cerramos el modal
+  };
+
+  const cancelDelete = () => {
+    setTaskToDelete(null); // cerramos el modal
   };
 
   // PANTALLA DE CARGA - Se muestra mientras carga las estadísticas
@@ -121,6 +200,7 @@ export default function DashboardPage() {
       </div>
     );
   }
+
 
   return (
     <div className="bg-gray-50 min-h-full">
@@ -142,8 +222,8 @@ export default function DashboardPage() {
 
 
           {/* Botón para cerrar sesión */}
-          <Button 
-            variant="secondary" 
+          <Button
+            variant="secondary"
             onClick={handleLogout}
             className=""
           >
@@ -154,7 +234,7 @@ export default function DashboardPage() {
 
       {/* CONTENIDO PRINCIPAL DEL DASHBOARD */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        
+
         {/* =============================================== */}
         {/* ESTADÍSTICAS PARA GERENTE - Vista global      */}
         {/* =============================================== */}
@@ -249,30 +329,29 @@ export default function DashboardPage() {
           <h2 className="text-xl font-semibold text-gunmetal mb-4">
             Acciones Rápidas
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* TODO: Cambiar este onClick por router.push('/projects') */}
-            <Button 
-              variant="primary" 
+            <Button
+              variant="primary"
               className="justify-center"
               onClick={() => alert('Funcionalidad en desarrollo')}
             >
               Ver Proyectos
             </Button>
-            
+
             {/* TODO: Cambiar este onClick por router.push('/tasks') */}
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="justify-center"
-              onClick={() => alert('Funcionalidad en desarrollo')}
+              onClick={() => llamarTask()}
             >
               Ver Tareas
             </Button>
-            
             {/* Solo los gerentes pueden crear proyectos */}
             {user?.role === 'gerente' && (
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 className="justify-center"
                 onClick={() => alert('Funcionalidad en desarrollo')}
               >
@@ -281,6 +360,56 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+
+
+
+        {taskVisible ? (<div className="bg-white rounded-lg shadow-sm p-6" id="task-div">
+          <h2 className="text-xl font-semibold text-gunmetal mb-4">
+
+            <Button
+              variant="outline"
+              className="justify-center"
+              onClick={() => { setEditingTask(null); registrarTask(); }}
+            >
+              Crear Tarea
+            </Button>
+            <TaskForm
+              visible={showForm}
+              onAdd={(task) => console.log("Nueva tarea:", task)}
+              onClose={() => setShowForm(false)}
+              save={editingTask ? handleEditTask : handleAddTask}
+              task={editingTask}
+              user={user}
+              editingTask={editingTask}
+            />
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {/* TODO: Cambiar este onClick por router.push('/projects') */}
+
+            {tasks.map((task) => (
+              <Task
+                key={task.id}
+                titulo={task.titulo}
+                descripcion={task.descripcion}
+                proyectoId={task.proyectoId}
+                prioridad={task.prioridad}
+                estatus={task.estatus}
+                encargado={task.encargado}
+                fechaRegistro={task.fechaRegistro}
+                fechaFinalizacion={task.fechaFinalizacion}
+                fechaModificacion={task.fechaModificacion}
+                onEdit={() => { setEditingTask(task); registrarTask(); }}
+                onComplete={() => handleCompleteTask(task.id)}
+                onDelete={() => handleDeleteTask(task.id)}
+
+              />
+            ))}
+
+
+          </div>
+        </div>) : ""}
 
         {/* =============================================== */}
         {/* PRÓXIMOS VENCIMIENTOS - Solo para usuarios    */}
@@ -322,18 +451,17 @@ export default function DashboardPage() {
                 <div key={index} className="p-4 border rounded-lg">
                   <div className="flex justify-between items-center mb-2">
                     <h4 className="font-medium text-gunmetal">{project.name}</h4>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      project.status === 'completado' ? 'bg-green-100 text-green-800' :
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${project.status === 'completado' ? 'bg-green-100 text-green-800' :
                       project.status === 'en progreso' ? 'bg-blue-100 text-blue-800' :
-                      project.status === 'pendiente' ? 'bg-gray-100 text-gray-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                        project.status === 'pendiente' ? 'bg-gray-100 text-gray-800' :
+                          'bg-red-100 text-red-800'
+                      }`}>
                       {project.status}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-steel-blue h-2 rounded-full" 
+                    <div
+                      className="bg-steel-blue h-2 rounded-full"
                       style={{ width: `${project.progressPercentage}%` }}
                     ></div>
                   </div>
@@ -346,6 +474,41 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {taskToDelete !== null && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
+              <h2 className="text-lg font-semibold text-red-600 mb-4">
+                ⚠️ Eliminar tarea
+              </h2>
+              <p className="text-gray-700 mb-6">
+                ¿Estás seguro de que quieres eliminar esta tarea?
+                <br />
+                <span className="font-bold">Este proceso no tiene reversa.</span>
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={cancelDelete}
+                  className="px-4 py-2 rounded-md bg-gray-300 hover:bg-gray-400 text-gray-800"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-4 py-2 rounded-md bg-red-500 hover:bg-red-600 text-white"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+
+
+
+
+
         {/* =============================================== */}
         {/* MENSAJE DE BIENVENIDA - Información contextual */}
         {/* =============================================== */}
@@ -354,8 +517,8 @@ export default function DashboardPage() {
             ¡Bienvenido a tu Dashboard!
           </h3>
           <p className="text-blue-800">
-            Desde aquí podrás gestionar tus proyectos y tareas. 
-            {user?.role === 'gerente' 
+            Desde aquí podrás gestionar tus proyectos y tareas.
+            {user?.role === 'gerente'
               ? ' Como gerente, tienes acceso completo para crear y administrar proyectos.'
               : ' Como usuario, puedes ver proyectos asignados y actualizar el estado de tus tareas.'
             }
