@@ -73,24 +73,38 @@ export async function GET(request) {
     
     /**
      * ENRIQUECIMIENTO DE DATOS
-     * Agregar información del usuario creador a cada proyecto
+     * Agregar información del usuario creador y progreso de tareas a cada proyecto
      */
-    const projectsWithCreator = projectsToReturn.map(project => {
+    const projectsWithDetails = projectsToReturn.map(project => {
       const creator = data.users.find(user => user.id === project.createdBy);
+      
+      // Calcular progreso de tareas para este proyecto
+      const projectTasks = data.tasks.filter(task => task.projectId === project.id);
+      const totalTasks = projectTasks.length;
+      const completedTasks = projectTasks.filter(task => task.status === 'completado').length;
+      
+      // Calcular el equipo del proyecto (usuarios únicos con tareas asignadas)
+      const teamMembers = [...new Set(projectTasks.map(task => task.assignedTo))];
+      
       return {
         ...project,
         createdByUser: creator ? { 
           id: creator.id, 
           name: creator.name, 
           email: creator.email 
-        } : null
+        } : null,
+        // Información de progreso
+        totalTasks,
+        completedTasks,
+        progressPercentage: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+        teamSize: teamMembers.length
       };
     });
 
     return NextResponse.json({
       success: true,
-      data: projectsWithCreator,
-      message: `Proyectos obtenidos exitosamente (${projectsWithCreator.length} proyecto${projectsWithCreator.length !== 1 ? 's' : ''})`
+      data: projectsWithDetails,
+      message: `Proyectos obtenidos exitosamente (${projectsWithDetails.length} proyecto${projectsWithDetails.length !== 1 ? 's' : ''})`
     }, { status: 200 });
 
   } catch (error) {
@@ -207,16 +221,27 @@ export async function POST(request) {
     // Agregar el nuevo proyecto a los datos
     data.projects.push(newProject);
     
-    // Obtener información del usuario creador para la respuesta
+    // Obtener información del usuario creador y progreso para la respuesta
     const creator = data.users.find(user => user.id === newProject.createdBy);
-    const projectWithCreator = {
+    
+    // Calcular progreso (proyecto recién creado no tendrá tareas aún)
+    const projectTasks = data.tasks.filter(task => task.projectId === newProject.id);
+    const totalTasks = projectTasks.length;
+    const completedTasks = projectTasks.filter(task => task.status === 'completado').length;
+    const teamMembers = [...new Set(projectTasks.map(task => task.assignedTo))];
+    
+    const projectWithDetails = {
       ...newProject,
-      createdByUser: creator ? { id: creator.id, name: creator.name, email: creator.email } : null
+      createdByUser: creator ? { id: creator.id, name: creator.name, email: creator.email } : null,
+      totalTasks,
+      completedTasks,
+      progressPercentage: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+      teamSize: teamMembers.length
     };
     
     return NextResponse.json({
       success: true,
-      data: projectWithCreator,
+      data: projectWithDetails,
       message: "Proyecto creado exitosamente"
     }, { status: 201 });
     

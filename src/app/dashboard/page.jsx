@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null);        // Datos del usuario logueado
   const [stats, setStats] = useState(null);      // Estadísticas del dashboard desde la API
   const [isLoading, setIsLoading] = useState(true); // Control de loading
+  const [searchData, setSearchData] = useState([]); // Datos para el buscador
 
   /**
    * EFECTO PRINCIPAL - Se ejecuta al montar el componente
@@ -54,7 +55,43 @@ export default function DashboardPage() {
 
     // Cargar las estadísticas específicas para este usuario
     loadDashboardStats(sessionToken, parsedUser.id);
+    
+    // Cargar datos para el buscador
+    loadSearchData(sessionToken, parsedUser.id);
   }, []); // Array vacío = se ejecuta solo una vez al cargar la página
+
+  /**
+   * FUNCIÓN PARA CARGAR DATOS DEL BUSCADOR
+   */
+  const loadSearchData = async (token, userId) => {
+    try {
+      const [projectsResponse, tasksResponse] = await Promise.all([
+        fetch(`/api/projects?requestedBy=${userId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`/api/tasks?requestedBy=${userId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      const projectsData = await projectsResponse.json();
+      const tasksData = await tasksResponse.json();
+
+      let combinedData = [];
+      
+      if (projectsData.success) {
+        combinedData = [...combinedData, ...projectsData.data];
+      }
+      
+      if (tasksData.success) {
+        combinedData = [...combinedData, ...tasksData.data];
+      }
+
+      setSearchData(combinedData);
+    } catch (error) {
+      console.error('Error cargando datos de búsqueda:', error);
+    }
+  };
 
   /**
    * FUNCIÓN PARA CARGAR ESTADÍSTICAS DEL DASHBOARD
@@ -138,7 +175,12 @@ export default function DashboardPage() {
           {/* funcionalidad del placeholder buscador dentro del dashboard */}
 
           <div className="flex-1 flex justify-center px-8">
-            <SearchBar />
+            <SearchBar 
+              data={searchData}
+              searchFields={['title', 'name', 'description']}
+              placeholder="Buscar proyectos y tareas..."
+              showCategories={true}
+            />
           </div>
 
 
@@ -243,7 +285,23 @@ export default function DashboardPage() {
         )}
 
         {/* =============================================== */}
-        {/* ACCIONES RÁPIDAS - Botones para funciones     */}
+        {/* ACCIONES RÁPIDAS - Navegación a proyectos     */}
+        {/* =============================================== */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+          <h2 className="text-xl font-semibold text-gunmetal mb-4">
+            Acciones Rápidas
+          </h2>
+          
+          <Button 
+            onClick={() => router.push('/dashboard/projects')}
+            className="w-full bg-steel-blue hover:bg-steel-blue/90 text-white py-3 mb-4"
+          >
+            📁 Gestionar Proyectos
+          </Button>
+        </div>
+
+        {/* =============================================== */}
+        {/* GESTIÓN DE TAREAS - Lista principal           */}
         {/* =============================================== */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-xl font-semibold text-gunmetal mb-4">
