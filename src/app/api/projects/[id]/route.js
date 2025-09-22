@@ -177,16 +177,27 @@ export async function PUT(request, { params }) {
     // Guardar cambios
     data.projects[projectIndex] = updatedProject;
     
-    // Obtener información del usuario creador para la respuesta
+    // Obtener información del usuario creador y progreso para la respuesta
     const creator = data.users.find(user => user.id === updatedProject.createdBy);
-    const projectWithCreator = {
+    
+    // Calcular progreso de tareas para este proyecto
+    const projectTasks = data.tasks.filter(task => task.projectId === updatedProject.id);
+    const totalTasks = projectTasks.length;
+    const completedTasks = projectTasks.filter(task => task.status === 'completado').length;
+    const teamMembers = [...new Set(projectTasks.map(task => task.assignedTo))];
+    
+    const projectWithDetails = {
       ...updatedProject,
-      createdByUser: creator ? { id: creator.id, name: creator.name, email: creator.email } : null
+      createdByUser: creator ? { id: creator.id, name: creator.name, email: creator.email } : null,
+      totalTasks,
+      completedTasks,
+      progressPercentage: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+      teamSize: teamMembers.length
     };
     
     return NextResponse.json({
       success: true,
-      data: projectWithCreator,
+      data: projectWithDetails,
       message: "Proyecto actualizado exitosamente"
     }, { status: 200 });
     
