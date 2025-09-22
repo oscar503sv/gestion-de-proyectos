@@ -177,9 +177,10 @@ export async function POST(request) {
       }, { status: 400 });
     }
     
-    // Crear nueva tarea
+    // Crear nueva tarea con ID más robusto
+    const newTaskId = data.tasks.length > 0 ? Math.max(...data.tasks.map(t => t.id)) + 1 : 1;
     const newTask = {
-      id: Math.max(...data.tasks.map(t => t.id)) + 1,
+      id: newTaskId,
       title: body.title.trim(),
       description: body.description.trim(),
       status: body.status || "pendiente",

@@ -111,6 +111,17 @@ let data = {
       assignedTo: 4,
       createdAt: "2025-09-18T09:00:00Z",
       dueDate: "2025-11-01T17:00:00Z"
+    },
+    {
+      id: 7,
+      title: "cambiar estilo de boton",
+      description: "cambiar el estilo del boton de inicio de sesion",
+      status: "pendiente",
+      priority: "baja",
+      projectId: 2,
+      assignedTo: 2,
+      createdAt: "2025-09-21T15:00:00Z",
+      dueDate: "2025-09-29T17:00:00Z"
     }
   ]
 };

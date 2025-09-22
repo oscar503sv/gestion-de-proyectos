@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import SearchBar from '@/components/buscador';
+import TaskList from '../../components/TaskList';
 
 /**
  * DASHBOARD PRINCIPAL - Página protegida que muestra estadísticas del usuario
@@ -243,43 +244,13 @@ export default function DashboardPage() {
 
         {/* =============================================== */}
         {/* ACCIONES RÁPIDAS - Botones para funciones     */}
-        {/* TODO: Conectar estos botones a páginas reales */}
         {/* =============================================== */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-xl font-semibold text-gunmetal mb-4">
-            Acciones Rápidas
+            Gestión de Tareas
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* TODO: Cambiar este onClick por router.push('/projects') */}
-            <Button 
-              variant="primary" 
-              className="justify-center"
-              onClick={() => alert('Funcionalidad en desarrollo')}
-            >
-              Ver Proyectos
-            </Button>
-            
-            {/* TODO: Cambiar este onClick por router.push('/tasks') */}
-            <Button 
-              variant="outline" 
-              className="justify-center"
-              onClick={() => alert('Funcionalidad en desarrollo')}
-            >
-              Ver Tareas
-            </Button>
-            
-            {/* Solo los gerentes pueden crear proyectos */}
-            {user?.role === 'gerente' && (
-              <Button 
-                variant="secondary" 
-                className="justify-center"
-                onClick={() => alert('Funcionalidad en desarrollo')}
-              >
-                Crear Proyecto
-              </Button>
-            )}
-          </div>
+          <TaskList />
         </div>
 
         {/* =============================================== */}

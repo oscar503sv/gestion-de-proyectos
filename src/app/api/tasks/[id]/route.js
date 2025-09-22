@@ -143,7 +143,7 @@ export async function PUT(request, { params }) {
             const unauthorizedFields = providedFields.filter(field => !allowedFields.includes(field));
             
             if (unauthorizedFields.length > 0) {
-              errors.push("Solo puedes actualizar el estado de tus tareas asignadas");
+              errors.push(`Como usuario, solo puedes actualizar el estado de tus tareas. Campos no permitidos: ${unauthorizedFields.join(', ')}`);
             }
           }
         } else {
